@@ -1,6 +1,18 @@
+# 相依套件與建置產物
 node_modules
+.pnpm-store
 dist
 .next
 .output
 coverage
 apps/web/src/routeTree.gen.ts
+
+# 機器產生的鎖檔：絕不可被格式化
+pnpm-lock.yaml
+
+# AI 工具與工作流設定／範本（非專案原始碼，且 openspec 的 markdown 格式有嚴格規範，
+# 交給 prettier 重排會破壞）
+.agents
+.claude
+.codex
+openspec

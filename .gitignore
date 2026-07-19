@@ -3,6 +3,9 @@ node_modules
 .pnp
 .pnp.js
 
+# pnpm 內容定址快取（不應進版控；純本機快取，可由 pnpm 重建）
+.pnpm-store
+
 # Build outputs
 dist
 build
