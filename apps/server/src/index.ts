@@ -1,29 +1,14 @@
-import fastifyCors from "@fastify/cors";
 import { env } from "@fastify_drizzle_todolist/env/server";
-import Fastify from "fastify";
 
-const baseCorsConfig = {
-  origin: env.CORS_ORIGIN,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true,
-  maxAge: 86400,
-};
+import { buildApp } from "./app";
 
-const fastify = Fastify({
-  logger: true,
-});
+const app = buildApp();
 
-fastify.register(fastifyCors, baseCorsConfig);
-
-fastify.get("/", async () => {
-  return "OK";
-});
-
-fastify.listen({ port: 3000 }, (err) => {
+// host 綁 0.0.0.0，讓 Docker 容器外（host 映射埠）也能連入
+app.listen({ port: env.PORT, host: "0.0.0.0" }, (err) => {
   if (err) {
-    fastify.log.error(err);
+    app.log.error(err);
     process.exit(1);
   }
-  console.log("Server running on port 3000");
+  console.log(`Server running on port ${env.PORT}`);
 });

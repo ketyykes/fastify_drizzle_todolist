@@ -9,61 +9,61 @@
 
 ## 0. 前置基礎建設（非 TDD，後續 RED 依賴）
 
-- [ ] 0.1 以 fnm 套用 `.node-version`（Node 22.22.2）、`pnpm install`
-- [ ] 0.2 安裝 server 依賴：`@fastify/jwt`、`bcryptjs`、`@types/bcryptjs`
-- [ ] 0.3 `packages/env/src/server.ts` env schema 新增 `JWT_SECRET`（`z.string().min(1)`）與可選 `PORT`
-- [ ] 0.4 建立 server 整合測試基礎：vitest 設定、測試用 Postgres 連線、`buildApp()` app factory（供 `app.inject()`）、每次測試前跑 `db:push` 對齊 schema 的輔助
-- [ ] 0.5 `apps/server/src/index.ts` 改用 `buildApp()` 並讀 `env.PORT`（移除寫死的 `3000`）
+- [x] 0.1 以 fnm 套用 `.node-version`（Node 22.22.2）、`pnpm install`
+- [x] 0.2 安裝 server 依賴：`@fastify/jwt`、`bcryptjs`、`@types/bcryptjs`
+- [x] 0.3 `packages/env/src/server.ts` env schema 新增 `JWT_SECRET`（`z.string().min(1)`）與可選 `PORT`
+- [x] 0.4 建立 server 整合測試基礎：vitest 設定、測試用 Postgres 連線、`buildApp()` app factory（供 `app.inject()`）、每次測試前跑 `db:push` 對齊 schema 的輔助
+- [x] 0.5 `apps/server/src/index.ts` 改用 `buildApp()` 並讀 `env.PORT`（移除寫死的 `3000`）
 
 ## 1. 註冊 (user-auth)
 Depends on: §0
 
-- [ ] 1.1 RED: 寫測試 `register_creates_user_and_returns_token`
-- [ ] 1.2 GREEN: 建立 `packages/db` 的 `users` schema（`id`/`email` unique/`password`/`created_at`）並匯出；註冊 `@fastify/jwt` plugin；實作 `POST /auth/register`（zod 驗證 → bcrypt 雜湊 → insert → `jwt.sign({userId})` → 201 `{ token }`）
-- [ ] 1.3 RED: 寫測試 `register_hashes_password_not_plaintext`
-- [ ] 1.4 GREEN: 確保 `users.password` 存 bcrypt 雜湊（`$2` 前綴），非明文
-- [ ] 1.5 RED: 寫測試 `register_rejects_duplicate_email`
-- [ ] 1.6 GREEN: 對已存在 email 回 409（唯一鍵衝突處理）
-- [ ] 1.7 RED: 寫測試 `register_rejects_invalid_input`
-- [ ] 1.8 GREEN: 以 zod 驗證 email 格式與 password 最小長度，不合法回 400
+- [x] 1.1 RED: 寫測試 `register_creates_user_and_returns_token`
+- [x] 1.2 GREEN: 建立 `packages/db` 的 `users` schema（`id`/`email` unique/`password`/`created_at`）並匯出；註冊 `@fastify/jwt` plugin；實作 `POST /auth/register`（zod 驗證 → bcrypt 雜湊 → insert → `jwt.sign({userId})` → 201 `{ token }`）
+- [x] 1.3 RED: 寫測試 `register_hashes_password_not_plaintext`
+- [x] 1.4 GREEN: 確保 `users.password` 存 bcrypt 雜湊（`$2` 前綴），非明文
+- [x] 1.5 RED: 寫測試 `register_rejects_duplicate_email`
+- [x] 1.6 GREEN: 對已存在 email 回 409（唯一鍵衝突處理）
+- [x] 1.7 RED: 寫測試 `register_rejects_invalid_input`
+- [x] 1.8 GREEN: 以 zod 驗證 email 格式與 password 最小長度，不合法回 400
 
 ## 2. 登入與授權 (user-auth)
 Depends on: §1
 
-- [ ] 2.1 RED: 寫測試 `login_returns_token_on_valid_credentials`
-- [ ] 2.2 GREEN: 實作 `POST /auth/login`（bcrypt 比對 → `jwt.sign({userId})` → 200 `{ token }`）
-- [ ] 2.3 RED: 寫測試 `login_rejects_wrong_credentials`
-- [ ] 2.4 GREEN: 帳號不存在或密碼錯皆回一致的 401（不洩漏存在性）
-- [ ] 2.5 RED: 寫測試 `authenticate_allows_valid_token`
-- [ ] 2.6 GREEN: 建立 `authenticate` preHandler（`request.jwtVerify()`，成功將 `userId` 附於 request）
-- [ ] 2.7 RED: 寫測試 `authenticate_blocks_invalid_token`
-- [ ] 2.8 GREEN: token 缺少 / 格式錯 / 過期 / 簽章不符皆回 401 並中止
-- [ ] 2.9 RED: 寫測試 `me_returns_current_user_without_password`
-- [ ] 2.10 GREEN: 實作受保護的 `GET /auth/me`，回傳 `{ id, email }`（排除 password）
-- [ ] 2.11 RED: 寫測試 `me_rejects_missing_or_invalid_token`
-- [ ] 2.12 GREEN: 將 `authenticate` 套用於 `GET /auth/me`
+- [x] 2.1 RED: 寫測試 `login_returns_token_on_valid_credentials`
+- [x] 2.2 GREEN: 實作 `POST /auth/login`（bcrypt 比對 → `jwt.sign({userId})` → 200 `{ token }`）
+- [x] 2.3 RED: 寫測試 `login_rejects_wrong_credentials`
+- [x] 2.4 GREEN: 帳號不存在或密碼錯皆回一致的 401（不洩漏存在性）
+- [x] 2.5 RED: 寫測試 `authenticate_allows_valid_token`
+- [x] 2.6 GREEN: 建立 `authenticate` preHandler（`request.jwtVerify()`，成功將 `userId` 附於 request）
+- [x] 2.7 RED: 寫測試 `authenticate_blocks_invalid_token`
+- [x] 2.8 GREEN: token 缺少 / 格式錯 / 過期 / 簽章不符皆回 401 並中止
+- [x] 2.9 RED: 寫測試 `me_returns_current_user_without_password`
+- [x] 2.10 GREEN: 實作受保護的 `GET /auth/me`，回傳 `{ id, email }`（排除 password）
+- [x] 2.11 RED: 寫測試 `me_rejects_missing_or_invalid_token`
+- [x] 2.12 GREEN: 將 `authenticate` 套用於 `GET /auth/me`
 
 ## 3. Todos CRUD 與隔離 (todo-management)
 Depends on: §2
 
-- [ ] 3.1 RED: 寫測試 `create_todo_persists_for_current_user`
-- [ ] 3.2 GREEN: 建立 `todos` schema（`id`/`user_id`→users/`title`/`completed` 預設 false/`created_at`）並匯出；實作受保護 `POST /todos`（以 token 的 `userId` 建立、回 201）
-- [ ] 3.3 RED: 寫測試 `create_todo_rejects_empty_title`
-- [ ] 3.4 GREEN: 以 zod 驗證 `title` 非空，空值回 400
-- [ ] 3.5 RED: 寫測試 `list_todos_returns_only_own`
-- [ ] 3.6 GREEN: 實作受保護 `GET /todos`，`where user_id = currentUserId`
-- [ ] 3.7 RED: 寫測試 `patch_todo_updates_completed`
-- [ ] 3.8 GREEN: 實作受保護 `PATCH /todos/:id`（限本人、更新 `completed`/`title` → 200）
-- [ ] 3.9 RED: 寫測試 `patch_todo_returns_404_when_missing`
-- [ ] 3.10 GREEN: 找不到（含非本人）回 404
-- [ ] 3.11 RED: 寫測試 `delete_todo_removes_own`
-- [ ] 3.12 GREEN: 實作受保護 `DELETE /todos/:id`（限本人 → 204）
-- [ ] 3.13 RED: 寫測試 `patch_others_todo_returns_404`
-- [ ] 3.14 GREEN: `PATCH` 查詢條件加入 `user_id = currentUserId`，他人資源回 404 且不變更
-- [ ] 3.15 RED: 寫測試 `delete_others_todo_returns_404`
-- [ ] 3.16 GREEN: `DELETE` 查詢條件加入 `user_id = currentUserId`，他人資源回 404 且不刪除
-- [ ] 3.17 RED: 寫測試 `list_excludes_other_users_todos`
-- [ ] 3.18 GREEN: 驗證 §3.6 的過濾條件已排除他人 todo（無需新程式，僅補驗證）
+- [x] 3.1 RED: 寫測試 `create_todo_persists_for_current_user`
+- [x] 3.2 GREEN: 建立 `todos` schema（`id`/`user_id`→users/`title`/`completed` 預設 false/`created_at`）並匯出；實作受保護 `POST /todos`（以 token 的 `userId` 建立、回 201）
+- [x] 3.3 RED: 寫測試 `create_todo_rejects_empty_title`
+- [x] 3.4 GREEN: 以 zod 驗證 `title` 非空，空值回 400
+- [x] 3.5 RED: 寫測試 `list_todos_returns_only_own`
+- [x] 3.6 GREEN: 實作受保護 `GET /todos`，`where user_id = currentUserId`
+- [x] 3.7 RED: 寫測試 `patch_todo_updates_completed`
+- [x] 3.8 GREEN: 實作受保護 `PATCH /todos/:id`（限本人、更新 `completed`/`title` → 200）
+- [x] 3.9 RED: 寫測試 `patch_todo_returns_404_when_missing`
+- [x] 3.10 GREEN: 找不到（含非本人）回 404
+- [x] 3.11 RED: 寫測試 `delete_todo_removes_own`
+- [x] 3.12 GREEN: 實作受保護 `DELETE /todos/:id`（限本人 → 204）
+- [x] 3.13 RED: 寫測試 `patch_others_todo_returns_404`
+- [x] 3.14 GREEN: `PATCH` 查詢條件加入 `user_id = currentUserId`，他人資源回 404 且不變更
+- [x] 3.15 RED: 寫測試 `delete_others_todo_returns_404`
+- [x] 3.16 GREEN: `DELETE` 查詢條件加入 `user_id = currentUserId`，他人資源回 404 且不刪除
+- [x] 3.17 RED: 寫測試 `list_excludes_other_users_todos`
+- [x] 3.18 GREEN: 驗證 §3.6 的過濾條件已排除他人 todo（無需新程式，僅補驗證）
 
 ## 4. 前端認證接線 (web)
 Depends on: §2

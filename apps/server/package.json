@@ -12,14 +12,18 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
+    "@fastify/jwt": "^10.2.0",
     "@fastify_drizzle_todolist/db": "workspace:*",
     "@fastify_drizzle_todolist/env": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.2",
     "fastify": "^5.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@fastify_drizzle_todolist/config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
