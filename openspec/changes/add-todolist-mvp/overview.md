@@ -141,7 +141,7 @@ auth   : JWT 簽發 + Bearer 驗證，token 存前端 localStorage
 
 ## Architecture
 
-前端在瀏覽器/本機，後端與 DB 在 Docker；瀏覽器透過 host 映射埠 3001 連後端，
+前端在瀏覽器/本機，後端與 DB 在 Docker；瀏覽器透過 host 映射埠 7529 連後端，
 每次請求由 axios interceptor 附上 Bearer token，後端以 preHandler 驗證後才進 route。
 
 ```
@@ -151,10 +151,10 @@ Host (你的機器)
 │                 │  jotai atom + localStorage 存 token          │
 │                 │  axios interceptor: Authorization: Bearer    │
 │                 ▼                                               │
-│           http://localhost:3001                                │
+│           http://localhost:7529                                │
 │  ── Docker network ──────────────────────────────────────────┐ │
 │  │                                                            │ │
-│  │  server 容器 (Fastify, 3000)                               │ │
+│  │  server 容器 (Fastify, 7529)                               │ │
 │  │  ┌──────────────┐   ┌──────────────┐   ┌───────────────┐  │ │
 │  │  │ authenticate │──►│ auth routes  │   │ todos routes  │  │ │
 │  │  │ preHandler   │   │ /auth/*      │   │ /todos/* (■)  │  │ │

@@ -67,9 +67,9 @@
 
 ### Decision: 前端維持本機，不進 Docker
 
-**Choice**: 前端以本機 `vite dev` 執行，`VITE_SERVER_URL` 指向 `http://localhost:3001`（後端 host 映射埠）。
+**Choice**: 前端以本機 `vite dev` 執行，`VITE_SERVER_URL` 指向 `http://localhost:7529`（後端 host 映射埠，選用冷門埠避免撞本機服務）。
 
-**Rationale**: React 在**瀏覽器**執行，連不到 Docker 內部主機名（如 `server:3001`）；`VITE_*` 亦為 build 時烙入、runtime 設 compose env 無效。前端本機直連 host 映射埠可完全避開這些坑。
+**Rationale**: React 在**瀏覽器**執行，連不到 Docker 內部主機名（如 `server:7529`）；`VITE_*` 亦為 build 時烙入、runtime 設 compose env 無效。前端本機直連 host 映射埠可完全避開這些坑。
 
 **Alternatives considered**:
 - 前端也進 Docker：需以 build arg 傳入可從瀏覽器抵達的 API URL，並跑 nginx 提供靜態檔，對 MVP 過重且易誤設（現有 compose 的 `VITE_API_URL=http://server:3001` 正是三重錯示範）。
@@ -105,10 +105,10 @@
 全新功能，無資料遷移。部署／啟動步驟：
 1. 本機以 fnm 套用 `.node-version`（Node 22.22.2），`pnpm install`。
 2. `docker compose up`：啟動 `db`（Postgres 16）與 `server`（dev 容器，啟動先 `db:push` 建 `users`/`todos` 表再 `tsx watch`）。
-3. 本機 `pnpm dev:web` 啟前端，連 `http://localhost:3001`。
+3. 本機 `pnpm dev:web` 啟前端，連 `http://localhost:7529`。
 4. Rollback：`docker compose down`；因無既有資料，移除 volume 即回到乾淨狀態。
 
 ## Open Questions
 
-- 是否要保留 `packages/db` 的 `example` 表？（傾向移除，但不影響功能，留待實作決定）
+- ~~是否要保留 `packages/db` 的 `example` 表？~~ 已解決：移除 `example.ts` 並從 `schema/index.ts` 移除匯出，DB 表亦已 db:push 移除。
 - 是否需要一組預設 seed 帳號方便測試？（目前有 register 端點，可不需要）
