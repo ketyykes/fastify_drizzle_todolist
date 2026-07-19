@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+catalog:
+  dotenv: ^17.4.2
+  zod: ^4.4.3
+  "@types/node": ^26.1.1
+  vitest: 4.1.8
+  "@vitest/ui": 4.1.8
+  "@vitest/coverage-v8": 4.1.8
+  jsdom: ^29.1.1

@@ -1,0 +1,6 @@
+node_modules
+dist
+.next
+.output
+coverage
+apps/web/src/routeTree.gen.ts

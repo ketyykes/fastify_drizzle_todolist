@@ -1,0 +1,44 @@
+{
+  "name": "fastify_drizzle_todolist",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "check-types": "pnpm -r --if-present check-types",
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server dev",
+    "db:push": "pnpm --filter @fastify_drizzle_todolist/db db:push",
+    "db:studio": "pnpm --filter @fastify_drizzle_todolist/db db:studio",
+    "db:generate": "pnpm --filter @fastify_drizzle_todolist/db db:generate",
+    "db:migrate": "pnpm --filter @fastify_drizzle_todolist/db db:migrate",
+    "db:start": "pnpm --filter @fastify_drizzle_todolist/db db:start",
+    "db:watch": "pnpm --filter @fastify_drizzle_todolist/db db:watch",
+    "db:stop": "pnpm --filter @fastify_drizzle_todolist/db db:stop",
+    "db:down": "pnpm --filter @fastify_drizzle_todolist/db db:down",
+    "test": "pnpm --filter web test && pnpm --filter server test",
+    "lint:eslint": "eslint .",
+    "format:prettier": "prettier --write .",
+    "format:prettier:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@fastify_drizzle_todolist/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@fastify_drizzle_todolist/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0"
+  },
+  "packageManager": "pnpm@10.17.0"
+}

@@ -1,0 +1,65 @@
+# Docker Compose for fastify_drizzle_todolist
+# Full-stack container orchestration
+
+name: fastify_drizzle_todolist
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: fastify_drizzle_todolist-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://server:3001
+    restart: unless-stopped
+    depends_on:
+      - server
+    networks:
+      - fastify_drizzle_todolist-network
+
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    container_name: fastify_drizzle_todolist-server
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:password@db:5432/fastify_drizzle_todolist
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - fastify_drizzle_todolist-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: fastify_drizzle_todolist-postgres
+    environment:
+      POSTGRES_DB: fastify_drizzle_todolist
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - fastify_drizzle_todolist_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - fastify_drizzle_todolist-network
+
+networks:
+  fastify_drizzle_todolist-network:
+    driver: bridge
+
+volumes:
+  fastify_drizzle_todolist_postgres_data:
