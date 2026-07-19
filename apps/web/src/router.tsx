@@ -1,7 +1,21 @@
-import { createBrowserRouter } from "react-router";
+import { useAtomValue } from "jotai";
+import type { ReactNode } from "react";
+import { createBrowserRouter, Navigate } from "react-router";
 
 import AppShell from "./app-shell";
-import Home from "./routes/home";
+import { tokenAtom } from "./lib/auth";
+import Login from "./routes/login";
+import Register from "./routes/register";
+import Todos from "./routes/todos";
+
+// 受保護路由：無 token 導回登入頁
+function RequireAuth({ children }: { children: ReactNode }) {
+  const token = useAtomValue(tokenAtom);
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
 
 function NotFound() {
   return (
@@ -17,7 +31,17 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <Home /> },
+      { index: true, element: <Navigate to="/todos" replace /> },
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
+      {
+        path: "todos",
+        element: (
+          <RequireAuth>
+            <Todos />
+          </RequireAuth>
+        ),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },

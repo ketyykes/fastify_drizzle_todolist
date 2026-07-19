@@ -1,39 +1,42 @@
 # Docker Compose for fastify_drizzle_todolist
-# Full-stack container orchestration
+# 後端 + 資料庫以 Docker 啟動（dev 容器，tsx watch 熱更新）；前端本機 vite dev 連 localhost:3001
 
 name: fastify_drizzle_todolist
 
 services:
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-    container_name: fastify_drizzle_todolist-web
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://server:3001
-    restart: unless-stopped
-    depends_on:
-      - server
-    networks:
-      - fastify_drizzle_todolist-network
-
   server:
-    build:
-      context: ./apps/server
-      dockerfile: Dockerfile
+    image: node:22
     container_name: fastify_drizzle_todolist-server
-    ports:
-      - "3001:3000"
+    working_dir: /app
+    # 啟動流程：啟用 pnpm → 安裝依賴 → db:push 建表 → tsx watch 啟動
+    command: >
+      sh -c "corepack enable &&
+      corepack prepare pnpm@10.17.0 --activate &&
+      pnpm install --frozen-lockfile &&
+      pnpm db:push &&
+      pnpm --filter server dev"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URL=postgresql://postgres:password@db:5432/fastify_drizzle_todolist
-    restart: unless-stopped
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:password@db:5432/fastify_drizzle_todolist
+      CORS_ORIGIN: http://localhost:5173
+      JWT_SECRET: dev-secret-change-me
+    ports:
+      # host 3001 → 容器 3000（前端本機連 localhost:3001）
+      - "3001:3000"
+    volumes:
+      - .:/app
+      # 以匿名 volume 遮蔽 host 的 node_modules，容器內用自身 linux 依賴
+      - /app/node_modules
+      - /app/apps/server/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/db/node_modules
+      - /app/packages/env/node_modules
+      - /app/packages/config/node_modules
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - fastify_drizzle_todolist-network
 

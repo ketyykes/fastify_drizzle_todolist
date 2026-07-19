@@ -68,20 +68,20 @@ Depends on: §2
 ## 4. 前端認證接線 (web)
 Depends on: §2
 
-- [ ] 4.1 RED: 寫測試 `logout_clears_token_and_redirects`
-- [ ] 4.2 GREEN: 建立 auth store（jotai atom + localStorage 同步）與 `login`/`register`/`logout` 函式；`http-client.ts` 加 request interceptor 附 `Authorization: Bearer` 與 401 攔截導回 `/login`
+- [x] 4.1 RED: 寫測試 `logout_clears_token_and_redirects`
+- [x] 4.2 GREEN: 建立 auth store（jotai atom + localStorage 同步）與 `login`/`register`/`logout` 函式；`http-client.ts` 加 request interceptor 附 `Authorization: Bearer` 與 401 攔截導回 `/login`
 
 ## 5. 前端頁面與路由（UI 接線，非 TDD）
 Depends on: §4
 
-- [ ] 5.1 建立 login 頁（`@tanstack/react-form` + zod + shadcn `input`/`button`/`card`/`label`），呼叫 login 後存 token 並導向 `/todos`
-- [ ] 5.2 建立 register 頁（同上表單堆疊），呼叫 register 後導向 `/todos`
-- [ ] 5.3 建立 todos 頁：列表、新增（input + button）、切換完成（shadcn `checkbox`）、刪除
-- [ ] 5.4 `router.tsx` 加受保護路由包裝（無 token 導回 `/login`）；header 加登出鈕與 `sonner` toast 回饋
-- [ ] 5.5 前端 `VITE_SERVER_URL` 指向 `http://localhost:3001`
+- [x] 5.1 建立 login 頁（`@tanstack/react-form` + zod + shadcn `input`/`button`/`card`/`label`），呼叫 login 後存 token 並導向 `/todos`
+- [x] 5.2 建立 register 頁（同上表單堆疊），呼叫 register 後導向 `/todos`
+- [x] 5.3 建立 todos 頁：列表、新增（input + button）、切換完成（shadcn `checkbox`）、刪除
+- [x] 5.4 `router.tsx` 加受保護路由包裝（無 token 導回 `/login`）；header 加登出鈕與 `sonner` toast 回饋
+- [x] 5.5 前端 `VITE_SERVER_URL` 指向 `http://localhost:3001`
 
 ## 6. 容器與設定（非 TDD）
 Depends on: §3
 
-- [ ] 6.1 改寫根 `docker-compose.yml`：`server` 改 dev 容器（Node 22 base、bind-mount、`pnpm --filter server dev` tsx watch），啟動先 `pnpm db:push` 建表；補 `CORS_ORIGIN=http://localhost:5173`、`JWT_SECRET`、`DATABASE_URL=postgresql://postgres:password@db:5432/...`；`db` 用 `postgres:16-alpine`；移除前端 compose 服務
-- [ ] 6.2 手動端到端驗證：`docker compose up` 起後端+DB，本機 `pnpm dev:web`，跑完整流程（註冊 → 登入 → 新增/打勾/刪除 todo → 登出）並確認跨使用者隔離
+- [x] 6.1 改寫根 `docker-compose.yml`：`server` 改 dev 容器（Node 22 base、bind-mount、`pnpm --filter server dev` tsx watch），啟動先 `pnpm db:push` 建表；補 `CORS_ORIGIN=http://localhost:5173`、`JWT_SECRET`、`DATABASE_URL=postgresql://postgres:password@db:5432/...`；`db` 用 `postgres:16-alpine`；移除前端 compose 服務
+- [x] 6.2 手動端到端驗證：`docker compose up` 起後端+DB，本機 `pnpm dev:web`，跑完整流程（註冊 → 登入 → 新增/打勾/刪除 todo → 登出）並確認跨使用者隔離
