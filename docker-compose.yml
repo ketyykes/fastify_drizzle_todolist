@@ -1,5 +1,5 @@
 # Docker Compose for fastify_drizzle_todolist
-# 後端 + 資料庫以 Docker 啟動（dev 容器，tsx watch 熱更新）；前端本機 vite dev 連 localhost:3001
+# 後端 + 資料庫以 Docker 啟動（dev 容器，tsx watch 熱更新）；前端本機 vite dev 連 localhost:7529
 
 name: fastify_drizzle_todolist
 
@@ -17,13 +17,15 @@ services:
       pnpm --filter server dev"
     environment:
       NODE_ENV: development
-      PORT: 3000
-      DATABASE_URL: postgresql://postgres:password@db:5432/fastify_drizzle_todolist
+      # 後端也用冷門埠（容器內 server 監聽 7529，非常見的 3000）
+      PORT: 7529
+      # 密碼與密鑰由根目錄 .env 提供（不進版控）
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/fastify_drizzle_todolist
       CORS_ORIGIN: http://localhost:5173
-      JWT_SECRET: dev-secret-change-me
+      JWT_SECRET: ${JWT_SECRET}
     ports:
-      # host 3001 → 容器 3000（前端本機連 localhost:3001）
-      - "3001:3000"
+      # host 7529 → 容器 7529（冷門埠；前端本機連 localhost:7529）
+      - "7529:7529"
     volumes:
       - .:/app
       # 以匿名 volume 遮蔽 host 的 node_modules，容器內用自身 linux 依賴
@@ -46,7 +48,7 @@ services:
     environment:
       POSTGRES_DB: fastify_drizzle_todolist
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
