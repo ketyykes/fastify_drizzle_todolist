@@ -49,11 +49,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const { email, password } = parsed.data;
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     // 帳號不存在或密碼錯皆回一致的 401，不洩漏存在性
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return reply.code(401).send({ error: "Invalid credentials" });
@@ -63,20 +59,16 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.code(200).send({ token });
   });
 
-  app.get(
-    "/auth/me",
-    { preHandler: [app.authenticate] },
-    async (request, reply) => {
-      const { userId } = request.user;
-      const [user] = await db
-        .select({ id: users.id, email: users.email })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      if (!user) {
-        return reply.code(401).send({ error: "Unauthorized" });
-      }
-      return reply.send(user);
-    },
-  );
+  app.get("/auth/me", { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { userId } = request.user;
+    const [user] = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user) {
+      return reply.code(401).send({ error: "Unauthorized" });
+    }
+    return reply.send(user);
+  });
 }

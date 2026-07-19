@@ -12,10 +12,7 @@ export async function loginRequest(email: string, password: string): Promise<str
   return data.token;
 }
 
-export async function registerRequest(
-  email: string,
-  password: string,
-): Promise<string> {
+export async function registerRequest(email: string, password: string): Promise<string> {
   const { data } = await httpClient.post<TokenResponse>("/auth/register", {
     email,
     password,

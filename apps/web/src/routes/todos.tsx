@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
-import {
-  createTodo,
-  deleteTodo,
-  fetchTodos,
-  updateTodo,
-  type Todo,
-} from "@/lib/todos-api";
+import { createTodo, deleteTodo, fetchTodos, updateTodo, type Todo } from "@/lib/todos-api";
 
 export default function Todos() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -93,16 +87,9 @@ export default function Todos() {
         <ul className="flex flex-col gap-2">
           {todos.map((todo) => (
             <li key={todo.id} className="flex items-center gap-3 border p-3">
-              <Checkbox
-                checked={todo.completed}
-                onCheckedChange={() => handleToggle(todo)}
-              />
+              <Checkbox checked={todo.completed} onCheckedChange={() => handleToggle(todo)} />
               <span
-                className={
-                  todo.completed
-                    ? "text-muted-foreground flex-1 line-through"
-                    : "flex-1"
-                }
+                className={todo.completed ? "text-muted-foreground flex-1 line-through" : "flex-1"}
               >
                 {todo.title}
               </span>

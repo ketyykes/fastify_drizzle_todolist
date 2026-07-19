@@ -40,9 +40,7 @@ describe("POST /auth/register", () => {
       payload: { email: "bob@example.com", password: "password123" },
     });
 
-    const rows = await db.execute(
-      sql`select password from users where email = 'bob@example.com'`,
-    );
+    const rows = await db.execute(sql`select password from users where email = 'bob@example.com'`);
     const stored = rows.rows[0]?.password as string;
     expect(stored).not.toBe("password123");
     expect(stored.startsWith("$2")).toBe(true);

@@ -4,13 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
@@ -26,13 +20,7 @@ interface AuthFormProps {
   footer: ReactNode;
 }
 
-export function AuthForm({
-  title,
-  description,
-  submitLabel,
-  onSubmit,
-  footer,
-}: AuthFormProps) {
+export function AuthForm({ title, description, submitLabel, onSubmit, footer }: AuthFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm({
@@ -67,9 +55,7 @@ export function AuthForm({
               name="email"
               validators={{
                 onChange: ({ value }) =>
-                  emailSchema.safeParse(value).success
-                    ? undefined
-                    : "請輸入有效的 email",
+                  emailSchema.safeParse(value).success ? undefined : "請輸入有效的 email",
               }}
             >
               {(field) => (
@@ -85,9 +71,7 @@ export function AuthForm({
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
                   {!field.state.meta.isValid && field.state.meta.isTouched ? (
-                    <p className="text-destructive text-xs">
-                      {field.state.meta.errors.join(", ")}
-                    </p>
+                    <p className="text-destructive text-xs">{field.state.meta.errors.join(", ")}</p>
                   ) : null}
                 </div>
               )}
@@ -98,9 +82,7 @@ export function AuthForm({
               validators={{
                 onChange: ({ value }) => {
                   const result = passwordSchema.safeParse(value);
-                  return result.success
-                    ? undefined
-                    : result.error.issues[0]?.message;
+                  return result.success ? undefined : result.error.issues[0]?.message;
                 },
               }}
             >
@@ -117,9 +99,7 @@ export function AuthForm({
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
                   {!field.state.meta.isValid && field.state.meta.isTouched ? (
-                    <p className="text-destructive text-xs">
-                      {field.state.meta.errors.join(", ")}
-                    </p>
+                    <p className="text-destructive text-xs">{field.state.meta.errors.join(", ")}</p>
                   ) : null}
                 </div>
               )}
@@ -131,9 +111,7 @@ export function AuthForm({
               </p>
             ) : null}
 
-            <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting] as const}
-            >
+            <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>
               {([canSubmit, isSubmitting]) => (
                 <Button type="submit" disabled={!canSubmit} className="w-full">
                   {isSubmitting ? "處理中..." : submitLabel}
