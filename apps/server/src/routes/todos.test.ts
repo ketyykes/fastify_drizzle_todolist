@@ -9,11 +9,26 @@ import { createTestApp, registerAndGetToken, resetDb } from "../test/helpers";
 
 const app = createTestApp();
 
+// fast-path 會透過真實 HTTP 呼叫 mock 外部服務：整個測試檔一律把 outbox 設定指向
+// 本測試 app 自己的 /mock-external/notifications（ephemeral port）。
+// 若只在 outbox describe 內覆寫，前面的一般 PATCH 測試翻轉 completed 時
+// 會打到 env 預設的 7529 dev server，測試結果取決於外部狀態（曾因 dev server
+// 的 mock 停在 timeout 模式而逾時），故提升到檔案層級確保測試封閉。
+beforeAll(async () => {
+  await app.listen({ port: 0 });
+  const address = app.server.address() as AddressInfo;
+  setOutboxConfigForTest({
+    webhookUrl: `http://127.0.0.1:${address.port}/mock-external/notifications`,
+    timeoutMs: 3000,
+  });
+});
+
 beforeEach(async () => {
   await resetDb();
 });
 
 afterAll(async () => {
+  setOutboxConfigForTest(null);
   await app.close();
 });
 
@@ -168,21 +183,7 @@ describe("跨使用者隔離", () => {
 });
 
 describe("PATCH /todos/:id — outbox 事件（transactional outbox）", () => {
-  // fast-path 會透過真實 HTTP 呼叫 mock 外部服務，故起真實埠並將 outbox 設定指向
-  // 同一個 app 的 /mock-external/notifications（不可依賴 7529 dev server）。
-  beforeAll(async () => {
-    await app.listen({ port: 0 });
-    const address = app.server.address() as AddressInfo;
-    setOutboxConfigForTest({
-      webhookUrl: `http://127.0.0.1:${address.port}/mock-external/notifications`,
-      timeoutMs: 3000,
-    });
-  });
-
-  afterAll(() => {
-    setOutboxConfigForTest(null);
-  });
-
+  // webhook 指向與逾時設定已在檔案層級的 beforeAll 統一覆寫
   beforeEach(async () => {
     await app.inject({ method: "POST", url: "/mock-external/reset" });
     await app.inject({
