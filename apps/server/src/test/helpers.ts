@@ -37,6 +37,43 @@ export async function resetDb() {
   } catch {
     // outbox_messages 尚未建立，忽略
   }
+  // staging-sync：staging 表先於 sync_runs（無外鍵，但依邏輯順序清理較直覺）
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_lists_staging RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_lists_staging 尚未建立，忽略
+  }
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_items_staging RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_items_staging 尚未建立，忽略
+  }
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_item_tags_staging RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_item_tags_staging 尚未建立，忽略
+  }
+  try {
+    await db.execute(sql`TRUNCATE TABLE sync_runs RESTART IDENTITY CASCADE`);
+  } catch {
+    // sync_runs 尚未建立，忽略
+  }
+  // staging-sync：3 張目標表
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_item_tags RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_item_tags 尚未建立，忽略
+  }
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_items RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_items 尚未建立，忽略
+  }
+  try {
+    await db.execute(sql`TRUNCATE TABLE template_lists RESTART IDENTITY CASCADE`);
+  } catch {
+    // template_lists 尚未建立，忽略
+  }
   try {
     await db.execute(sql`TRUNCATE TABLE todos RESTART IDENTITY CASCADE`);
   } catch {
