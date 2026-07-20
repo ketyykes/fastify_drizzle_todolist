@@ -1,5 +1,10 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import type { AddressInfo } from "node:net";
 
+import { db, outboxMessages } from "@fastify_drizzle_todolist/db";
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { setOutboxConfigForTest } from "../outbox/config";
 import { createTestApp, registerAndGetToken, resetDb } from "../test/helpers";
 
 const app = createTestApp();
@@ -159,5 +164,149 @@ describe("跨使用者隔離", () => {
 
     const listA = await app.inject({ method: "GET", url: "/todos", headers: auth(a) });
     expect(listA.json()).toHaveLength(0);
+  });
+});
+
+describe("PATCH /todos/:id — outbox 事件（transactional outbox）", () => {
+  // fast-path 會透過真實 HTTP 呼叫 mock 外部服務，故起真實埠並將 outbox 設定指向
+  // 同一個 app 的 /mock-external/notifications（不可依賴 7529 dev server）。
+  beforeAll(async () => {
+    await app.listen({ port: 0 });
+    const address = app.server.address() as AddressInfo;
+    setOutboxConfigForTest({
+      webhookUrl: `http://127.0.0.1:${address.port}/mock-external/notifications`,
+      timeoutMs: 3000,
+    });
+  });
+
+  afterAll(() => {
+    setOutboxConfigForTest(null);
+  });
+
+  beforeEach(async () => {
+    await app.inject({ method: "POST", url: "/mock-external/reset" });
+    await app.inject({
+      method: "PUT",
+      url: "/mock-external/mode",
+      payload: { mode: "success" },
+    });
+  });
+
+  async function findOutboxRows(refId: number) {
+    return db.select().from(outboxMessages).where(eq(outboxMessages.refId, refId));
+  }
+
+  it("completed false→true 入隊一筆，fast-path 成功後列變 done 且 mock 收到 payload", async () => {
+    const token = await registerAndGetToken(app, "outbox-flip@example.com");
+    const created = (await createTodo(token, "Ship it")).json();
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/todos/${created.id}`,
+      headers: auth(token),
+      payload: { completed: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().completed).toBe(true);
+
+    const rows = await findOutboxRows(created.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.topic).toBe("todo.completed");
+    expect(rows[0]?.status).toBe("done");
+
+    const mockList = await app.inject({ method: "GET", url: "/mock-external/notifications" });
+    const received = mockList.json().received as Array<{
+      refId: number;
+      topic: string;
+      todo: { title: string; completed: boolean };
+    }>;
+    expect(received).toHaveLength(1);
+    expect(received[0]?.refId).toBe(created.id);
+    expect(received[0]?.topic).toBe("todo.completed");
+    expect(received[0]?.todo.title).toBe("Ship it");
+    expect(received[0]?.todo.completed).toBe(true);
+  });
+
+  it("completed true→true 不重複入隊", async () => {
+    const token = await registerAndGetToken(app, "outbox-notrans@example.com");
+    const created = (await createTodo(token, "Already done")).json();
+
+    await app.inject({
+      method: "PATCH",
+      url: `/todos/${created.id}`,
+      headers: auth(token),
+      payload: { completed: true },
+    });
+    expect(await findOutboxRows(created.id)).toHaveLength(1);
+
+    // 再次 PATCH completed: true（true→true，非狀態轉移）不應再入隊
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/todos/${created.id}`,
+      headers: auth(token),
+      payload: { completed: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(await findOutboxRows(created.id)).toHaveLength(1);
+  });
+
+  it("只改 title 不入隊", async () => {
+    const token = await registerAndGetToken(app, "outbox-titleonly@example.com");
+    const created = (await createTodo(token, "Rename me")).json();
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/todos/${created.id}`,
+      headers: auth(token),
+      payload: { title: "Renamed" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().title).toBe("Renamed");
+    expect(await findOutboxRows(created.id)).toHaveLength(0);
+  });
+
+  it("他人 todo 仍回 404，且不入隊", async () => {
+    const a = await registerAndGetToken(app, "outbox-iso-a@example.com");
+    const b = await registerAndGetToken(app, "outbox-iso-b@example.com");
+    const bTodo = (await createTodo(b, "B private outbox")).json();
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/todos/${bTodo.id}`,
+      headers: auth(a),
+      payload: { completed: true },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(await findOutboxRows(bTodo.id)).toHaveLength(0);
+  });
+
+  it("fast-path 失敗（mode=fail）→ 列留 pending、attempts=1、有 last_error 與 next_attempt_at，PATCH 回應仍 200", async () => {
+    await app.inject({
+      method: "PUT",
+      url: "/mock-external/mode",
+      payload: { mode: "fail" },
+    });
+
+    const token = await registerAndGetToken(app, "outbox-fail@example.com");
+    const created = (await createTodo(token, "Will fail")).json();
+
+    const before = new Date();
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/todos/${created.id}`,
+      headers: auth(token),
+      payload: { completed: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().completed).toBe(true);
+
+    const rows = await findOutboxRows(created.id);
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    expect(row?.status).toBe("pending");
+    expect(row?.attempts).toBe(1);
+    expect(row?.lastError).toBeTruthy();
+    expect(row?.nextAttemptAt).toBeTruthy();
+    expect((row?.nextAttemptAt as Date).getTime()).toBeGreaterThan(before.getTime());
   });
 });

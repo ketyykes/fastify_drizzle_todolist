@@ -4,6 +4,8 @@ import { env } from "@fastify_drizzle_todolist/env/server";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { authRoutes } from "./routes/auth";
+import { mockExternalRoutes } from "./routes/mock-external";
+import { outboxAdminRoutes } from "./routes/outbox-admin";
 import { todoRoutes } from "./routes/todos";
 
 // JWT 的 payload 與驗證後掛在 request.user 的型別
@@ -40,21 +42,20 @@ export function buildApp() {
   app.register(fastifyJwt, { secret: env.JWT_SECRET });
 
   // 受保護端點的 preHandler：驗證 Authorization: Bearer <token>
-  app.decorate(
-    "authenticate",
-    async function (request: FastifyRequest, reply: FastifyReply) {
-      try {
-        await request.jwtVerify();
-      } catch {
-        return reply.code(401).send({ error: "Unauthorized" });
-      }
-    },
-  );
+  app.decorate("authenticate", async function (request: FastifyRequest, reply: FastifyReply) {
+    try {
+      await request.jwtVerify();
+    } catch {
+      return reply.code(401).send({ error: "Unauthorized" });
+    }
+  });
 
   app.get("/", async () => "OK");
 
   app.register(authRoutes);
   app.register(todoRoutes);
+  app.register(mockExternalRoutes);
+  app.register(outboxAdminRoutes);
 
   return app;
 }
