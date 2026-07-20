@@ -42,6 +42,40 @@ services:
     networks:
       - fastify_drizzle_todolist-network
 
+  worker:
+    image: node:22
+    container_name: fastify_drizzle_todolist-worker
+    working_dir: /app
+    # 獨立 outbox worker 程序：與 server 共用 image/依賴，command 最後改跑 worker（輪詢 sweeper）
+    command: >
+      sh -c "corepack enable &&
+      corepack prepare pnpm@10.17.0 --activate &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter server worker"
+    environment:
+      NODE_ENV: development
+      # worker 不對外提供 HTTP，PORT 沿用預設即可，不映射埠
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/fastify_drizzle_todolist
+      CORS_ORIGIN: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET}
+      # 送出目標須走 compose network 的服務名 server：容器內 localhost 指向 worker 自己，不是 server
+      OUTBOX_WEBHOOK_URL: http://server:7529/mock-external/notifications
+    volumes:
+      - .:/app
+      # 以匿名 volume 遮蔽 host 的 node_modules，容器內用自身 linux 依賴
+      - /app/node_modules
+      - /app/apps/server/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/db/node_modules
+      - /app/packages/env/node_modules
+      - /app/packages/config/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fastify_drizzle_todolist-network
+
   db:
     image: postgres:16-alpine
     container_name: fastify_drizzle_todolist-postgres

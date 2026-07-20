@@ -8,7 +8,10 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "test": "vitest run --passWithNoTests",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "worker": "tsx src/worker.ts",
+    "outbox:requeue-dead": "tsx src/scripts/outbox-requeue-dead.ts",
+    "outbox:prune": "tsx src/scripts/outbox-prune.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
