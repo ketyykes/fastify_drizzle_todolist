@@ -1,94 +1,120 @@
 # fastify_drizzle_todolist
 
-This project was created with [Better Fullstack](https://github.com/Marve10s/Better-Fullstack), a modern TypeScript stack that combines React, Vite SPA, Fastify, and more.
+本專案以 [Better Fullstack](https://github.com/Marve10s/Better-Fullstack) 建立，是結合 React、Vite SPA、Fastify 等技術的現代 TypeScript 全端範本。
 
-## Features
+## 特色功能
 
-- **TypeScript** - For type safety and improved developer experience
-- **React + Vite** - Client-routed React SPA powered by Vite
-- **TailwindCSS** - CSS framework
-- **shadcn/ui** - UI components
-- **Fastify** - Fast, low-overhead web framework
-- **JWT auth** - Register / login / logout with Bearer tokens (`@fastify/jwt` + `bcryptjs`)
-- **jotai + zod** - Client state and schema validation
-- **Node.js** - Runtime environment
+- **TypeScript** - 型別安全與更好的開發體驗
+- **React + Vite** - 由 Vite 驅動、client-side routing 的 React SPA
+- **TailwindCSS** - CSS 框架
+- **shadcn/ui** - UI 元件庫
+- **Fastify** - 高效能、低負擔的 web 框架
+- **JWT auth** - 註冊／登入／登出，以 Bearer token 驗證（`@fastify/jwt` + `bcryptjs`）
+- **jotai + zod** - 前端狀態管理與 schema 驗證
+- **Node.js** - 執行環境
 - **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
+- **PostgreSQL** - 資料庫
+- **Transactional Outbox** - todo 完成事件透過 outbox sweeper worker 可靠送達 mock 外部 webhook（設計文件：`docs/outbox/design.md`，教學頁：`/outbox-guide`）
 
-## Getting Started
+## 快速開始
 
-This setup runs the **backend + database in Docker** while the **frontend runs
-locally** with Vite and connects to the backend's host port.
+這套設定讓**後端＋資料庫跑在 Docker**，**前端跑在本機** Vite，並連到後端在 host 端暴露的埠。
 
-### Prerequisites
+### 前置需求
 
-- **Node.js 22** — required (Vitest 4 / rolldown need `node:util.styleText`).
-  A `.node-version` file is included; with `fnm` just run `fnm use`.
-- **Docker** (for the backend + PostgreSQL containers).
-- **pnpm** (`corepack enable`).
+- **Node.js 22** — 必要版本（Vitest 4／rolldown 需要 `node:util.styleText`）。
+  專案已附 `.node-version`，用 `fnm` 的話直接 `fnm use` 即可。
+- **Docker**（跑後端 + PostgreSQL 容器）。
+- **pnpm**（`corepack enable`）。
 
-### 1. Install dependencies
+### 1. 安裝依賴
 
 ```bash
-fnm use            # switch to Node 22 (per .node-version)
+fnm use            # 切到 Node 22（依照 .node-version）
 pnpm install
 ```
 
-### 2. Set up environment variables
+### 2. 設定環境變數
 
-Copy the example files and fill in the values. Generate secrets with
-`openssl rand -hex 32` (JWT) and `openssl rand -hex 16` (DB password).
+複製範本檔並填入實際值。用 `openssl rand -hex 32` 產生 JWT 密鑰、
+`openssl rand -hex 16` 產生 DB 密碼。
 
 ```bash
-cp .env.example .env                          # JWT_SECRET, POSTGRES_PASSWORD (used by docker compose)
+cp .env.example .env                          # JWT_SECRET、POSTGRES_PASSWORD（docker compose 用）
 cp apps/web/.env.example apps/web/.env         # VITE_SERVER_URL=http://localhost:7529
-cp apps/server/.env.example apps/server/.env   # host-side db:push / tests / dev:server
+cp apps/server/.env.example apps/server/.env   # 本機端 db:push／測試／dev:server 用
 ```
 
-Notes:
+注意事項：
 
-- The `POSTGRES_PASSWORD` in the root `.env` and the password inside
-  `apps/server/.env`'s `DATABASE_URL` **must match**.
-- `apps/server/.env` uses `localhost:5432` (host side); the Docker container
-  uses `db:5432` via values from the root `.env` — you don't edit those.
-- `.env` files are gitignored; only the `.env.example` templates are committed.
+- 根目錄 `.env` 的 `POSTGRES_PASSWORD` 與 `apps/server/.env` 內
+  `DATABASE_URL` 的密碼**必須一致**。
+- `apps/server/.env` 用 `localhost:5432`（host 端連線）；Docker 容器內則用
+  根目錄 `.env` 提供的值連 `db:5432`——這兩個檔案不用手動對齊。
+- 根目錄 `.env` 也設定了 outbox sweeper 的參數：`OUTBOX_WEBHOOK_URL`、
+  `OUTBOX_SWEEP_INTERVAL_MS`、`OUTBOX_SEND_TIMEOUT_MS`（詳見 `docs/outbox/design.md`）。
+- `.env` 檔案已被 gitignore；只有 `.env.example` 範本會進版控。
 
-### 3. Run
+### 3. 執行
 
 ```bash
-docker compose up -d     # backend (:7529) + PostgreSQL; runs db:push on startup
-pnpm dev:web             # frontend (Vite, :5173)
+docker compose up -d     # 後端 (:7529) + outbox worker + PostgreSQL；啟動時會跑 db:push
+pnpm dev:web             # 前端（Vite, :5173）
 ```
 
-- Web app: [http://localhost:5173](http://localhost:5173)
-- API: [http://localhost:7529](http://localhost:7529) (uncommon port to avoid clashes)
+- 網頁：[http://localhost:5173](http://localhost:5173)
+- API：[http://localhost:7529](http://localhost:7529)（用冷門埠避免衝突）
+- Outbox 教學頁：[http://localhost:5173/outbox-guide](http://localhost:5173/outbox-guide)
+  （架構圖、狀態機、即時演示）
 
-Stop with `docker compose down` (add `-v` to also wipe the database volume —
-required whenever you change `POSTGRES_PASSWORD`).
+`docker compose up -d` 同時也會啟動 `worker` 服務，它會輪詢 outbox 資料表
+（間隔為 `OUTBOX_SWEEP_INTERVAL_MS`），並把待送出的訊息送往 mock webhook
+（`/mock-external/notifications`）。
 
-## Project Structure
+以 `docker compose down` 停止（加上 `-v` 可一併清除資料庫 volume——
+每次變更 `POSTGRES_PASSWORD` 時都需要這麼做）。
+
+## 專案結構
 
 ```
 fastify_drizzle_todolist/
 ├── apps/
-│   ├── web/         # Frontend application (React + Vite SPA)
-│   └── server/      # Backend API (Fastify): routes/auth.ts, routes/todos.ts
+│   ├── web/         # 前端應用（React + Vite SPA）
+│   │   └── src/routes/outbox-guide.tsx   # outbox 教學頁
+│   └── server/      # 後端 API（Fastify）
+│       └── src/
+│           ├── routes/    # auth.ts、todos.ts、mock-external.ts、outbox-admin.ts
+│           ├── outbox/    # outbox 核心模組：repository、sweeper、sweep-loop、sender、backoff、config
+│           ├── scripts/   # outbox-requeue-dead.ts、outbox-prune.ts（維運用 CLI 腳本）
+│           └── worker.ts  # 獨立的 outbox sweeper worker 進入點
 ├── packages/
-│   ├── db/          # Drizzle schema (users, todos) + client
-│   ├── env/         # Type-safe env (t3-env) for web & server
-│   └── config/      # Shared TypeScript config
-├── docker-compose.yml   # backend (dev container) + PostgreSQL
-└── .env.example         # env templates (root / apps/web / apps/server)
+│   ├── db/          # Drizzle schema（users、todos、outbox_messages）+ client
+│   ├── env/         # 前後端共用的型別安全 env（t3-env）
+│   └── config/      # 共用的 TypeScript 設定
+├── docs/
+│   └── outbox/design.md   # transactional outbox 設計文件
+├── docker-compose.yml   # 後端 + worker（dev 容器）+ PostgreSQL
+└── .env.example         # env 範本（根目錄／apps/web／apps/server）
 ```
 
-## Available Scripts
+## 常用指令
 
-- `pnpm run dev`: Start all applications in development mode
-- `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
-- `pnpm run dev:server`: Start only the server (local, non-Docker)
-- `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run test`: Run the test suite (web + server; server tests need PostgreSQL)
-- `pnpm run db:push`: Push schema changes to database
-- `pnpm run db:studio`: Open database studio UI
+- `pnpm run dev`：以開發模式啟動所有應用
+- `pnpm run build`：建置所有應用
+- `pnpm run dev:web`：只啟動前端
+- `pnpm run dev:server`：只啟動後端（本機，非 Docker）
+- `pnpm run check-types`：檢查所有應用的 TypeScript 型別
+- `pnpm run test`：跑測試（web + server；server 測試打的是真的 Postgres，
+  但已隔離到獨立的 `_test` 資料庫，不會清空開發資料——詳見 CLAUDE.md）
+- `pnpm run db:push`：把 schema 變更推到開發資料庫
+- `pnpm run db:push:test`：把 schema 變更推到隔離的測試資料庫
+- `pnpm run db:studio`：開啟資料庫視覺化管理介面
+
+Outbox 相關指令（`--filter server`）：
+
+- `pnpm --filter server worker`：獨立啟動 outbox sweeper worker
+  （每隔 `OUTBOX_SWEEP_INTERVAL_MS` 輪詢一次）
+- `pnpm --filter server outbox:requeue-dead [--id=1,2]`：把 dead 狀態的
+  outbox 訊息重新排回 pending
+- `pnpm --filter server outbox:prune [--days=30]`：清除超過保留天數、
+  狀態為 done 的 outbox 訊息
