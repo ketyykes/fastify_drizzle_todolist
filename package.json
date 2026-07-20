@@ -13,6 +13,7 @@
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
     "db:push": "pnpm --filter @fastify_drizzle_todolist/db db:push",
+    "db:push:test": "pnpm --filter @fastify_drizzle_todolist/db db:push:test",
     "db:studio": "pnpm --filter @fastify_drizzle_todolist/db db:studio",
     "db:generate": "pnpm --filter @fastify_drizzle_todolist/db db:generate",
     "db:migrate": "pnpm --filter @fastify_drizzle_todolist/db db:migrate",

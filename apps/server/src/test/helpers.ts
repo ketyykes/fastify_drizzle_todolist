@@ -11,12 +11,32 @@ export function createTestApp() {
 }
 
 /**
+ * 執行期防呆（第二道防線，搭配 test/setup.ts 的第一道）：
+ * 在做任何 TRUNCATE 之前，直接向連線中的資料庫確認庫名以 _test 結尾，
+ * 否則中止。避免 DATABASE_URL 被誤設而在開發／正式庫上清資料。
+ */
+async function assertConnectedToTestDatabase() {
+  const result = await db.execute<{ current: string }>(sql`SELECT current_database() AS current`);
+  const current = result.rows[0]?.current ?? "";
+  if (!current.endsWith("_test")) {
+    throw new Error(`拒絕在非測試庫「${current}」上執行 resetDb（資料庫名稱必須以 _test 結尾）`);
+  }
+}
+
+/**
  * 清空資料表，確保每個測試互不污染。
  * 表尚未建立時（RED 階段 schema 還沒 push）忽略錯誤。
  */
 export async function resetDb() {
+  await assertConnectedToTestDatabase();
+
   // 分別 truncate：某張表在 RED 階段可能尚未建立，單獨包 try 避免整批失敗
   // （否則一張表不存在會導致另一張也沒被清空，測試互相污染）
+  try {
+    await db.execute(sql`TRUNCATE TABLE outbox_messages RESTART IDENTITY CASCADE`);
+  } catch {
+    // outbox_messages 尚未建立，忽略
+  }
   try {
     await db.execute(sql`TRUNCATE TABLE todos RESTART IDENTITY CASCADE`);
   } catch {
