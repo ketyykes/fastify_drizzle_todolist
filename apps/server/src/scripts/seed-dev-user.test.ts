@@ -1,4 +1,5 @@
 import { db, users } from "@fastify_drizzle_todolist/db";
+import { env } from "@fastify_drizzle_todolist/env/server";
 import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -50,5 +51,16 @@ describe("seedDevUser", () => {
     const result = await db.execute(sql`select email from users where email = ${email}`);
     expect(result.rows.length).toBe(1);
     expect(result.rows[0]?.email).toBe(email);
+  });
+
+  it("seed_uses_default_when_no_overrides", async () => {
+    // 不帶任何 overrides，應 fallback 到 packages/env 的預設值
+    await seedDevUser();
+
+    const result = await db.execute(
+      sql`select email from users where email = ${env.SEED_USER_EMAIL}`,
+    );
+    expect(result.rows.length).toBe(1);
+    expect(result.rows[0]?.email).toBe(env.SEED_USER_EMAIL);
   });
 });
