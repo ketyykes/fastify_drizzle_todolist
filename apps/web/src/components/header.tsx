@@ -15,11 +15,11 @@ export default function Header() {
     <div>
       <div className="flex flex-row items-center justify-between px-2 py-1">
         <nav className="flex gap-4 text-lg">
-          <NavLink
-            to="/todos"
-            className={({ isActive }) => (isActive ? "font-bold" : "")}
-          >
+          <NavLink to="/todos" className={({ isActive }) => (isActive ? "font-bold" : "")}>
             Todo App
+          </NavLink>
+          <NavLink to="/outbox-guide" className={({ isActive }) => (isActive ? "font-bold" : "")}>
+            Outbox 教學
           </NavLink>
         </nav>
         <div className="flex items-center gap-2">

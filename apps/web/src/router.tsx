@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import AppShell from "./app-shell";
 import { tokenAtom } from "./lib/auth";
 import Login from "./routes/login";
+import OutboxGuide from "./routes/outbox-guide";
 import Register from "./routes/register";
 import Todos from "./routes/todos";
 
@@ -39,6 +40,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <Todos />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "outbox-guide",
+        element: (
+          <RequireAuth>
+            <OutboxGuide />
           </RequireAuth>
         ),
       },
