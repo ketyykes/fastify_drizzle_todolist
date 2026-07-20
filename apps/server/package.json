@@ -10,6 +10,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "worker": "tsx src/worker.ts",
+    "seed": "tsx src/scripts/seed-dev-user.ts",
     "outbox:requeue-dead": "tsx src/scripts/outbox-requeue-dead.ts",
     "outbox:prune": "tsx src/scripts/outbox-prune.ts"
   },

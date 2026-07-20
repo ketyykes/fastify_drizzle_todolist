@@ -8,12 +8,13 @@ services:
     image: node:22
     container_name: fastify_drizzle_todolist-server
     working_dir: /app
-    # 啟動流程：啟用 pnpm → 安裝依賴 → db:push 建表 → tsx watch 啟動
+    # 啟動流程：啟用 pnpm → 安裝依賴 → db:push 建表 → db:seed 建立固定測試帳號 → tsx watch 啟動
     command: >
       sh -c "corepack enable &&
       corepack prepare pnpm@10.17.0 --activate &&
       pnpm install --frozen-lockfile &&
       pnpm db:push &&
+      pnpm db:seed &&
       pnpm --filter server dev"
     environment:
       NODE_ENV: development
@@ -23,6 +24,9 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/fastify_drizzle_todolist
       CORS_ORIGIN: http://localhost:5173
       JWT_SECRET: ${JWT_SECRET}
+      # 本機開發用固定測試帳密，未在根目錄 .env 提供時交給 packages/env 的預設值處理
+      SEED_USER_EMAIL: ${SEED_USER_EMAIL:-}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:-}
     ports:
       # host 7529 → 容器 7529（冷門埠；前端本機連 localhost:7529）
       - "7529:7529"

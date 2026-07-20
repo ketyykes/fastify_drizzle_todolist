@@ -55,6 +55,10 @@ todo 完成事件透過 transactional outbox 模式可靠推送到 mock 外部 w
 - `pnpm --filter server worker` - 啟動 outbox sweeper worker（輪詢間隔 `OUTBOX_SWEEP_INTERVAL_MS`）
 - `pnpm --filter server outbox:requeue-dead [--id=1,2]` - 把 dead 訊息重排回 pending
 - `pnpm --filter server outbox:prune [--days=30]` - 清理保留天數外的 done 訊息
+- `pnpm db:seed` - 建立固定的本機開發測試帳號（email/password 已存在則略過，不會覆寫密碼）；
+  帳密可用 `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` 覆寫，未提供時預設
+  `dev@example.com` / `dev12345`（僅供本機測試，正式環境務必覆寫或移除）；
+  docker-compose 的 `server` service 會在 `pnpm db:push` 之後自動執行
 
 ## 測試資料庫隔離
 
