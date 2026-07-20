@@ -2,13 +2,19 @@ import { db, users } from "@fastify_drizzle_todolist/db";
 import { env } from "@fastify_drizzle_todolist/env/server";
 import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { resetDb } from "../test/helpers";
+import { createTestApp, resetDb } from "../test/helpers";
 import { seedDevUser } from "./seed-dev-user";
+
+const app = createTestApp();
 
 beforeEach(async () => {
   await resetDb();
+});
+
+afterAll(async () => {
+  await app.close();
 });
 
 describe("seedDevUser", () => {
@@ -62,5 +68,32 @@ describe("seedDevUser", () => {
     );
     expect(result.rows.length).toBe(1);
     expect(result.rows[0]?.email).toBe(env.SEED_USER_EMAIL);
+  });
+
+  it("seeded_account_can_login_via_auth_login", async () => {
+    // 端到端驗證：seedDevUser 產生的密碼雜湊要能被既有 POST /auth/login 的
+    // bcrypt.compare 認可，且回傳的 token 要能實際用於 GET /auth/me。
+    const email = "seed-login@example.com";
+    const password = "seed-login-password123";
+
+    await seedDevUser({ email, password });
+
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email, password },
+    });
+    expect(loginRes.statusCode).toBe(200);
+    const { token } = loginRes.json();
+    expect(typeof token).toBe("string");
+    expect(token.length).toBeGreaterThan(0);
+
+    const meRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(meRes.statusCode).toBe(200);
+    expect(meRes.json().email).toBe(email);
   });
 });
