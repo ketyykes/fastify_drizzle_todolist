@@ -16,6 +16,10 @@ export const env = createEnv({
     OUTBOX_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
     // 送出單筆 outbox 訊息的 HTTP 逾時（毫秒）
     OUTBOX_SEND_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+    // seed 用測試帳號的 email（僅供本機開發測試，正式環境務必覆寫或移除）
+    SEED_USER_EMAIL: z.email().default("dev@example.com"),
+    // seed 用測試帳號的密碼（僅供本機開發測試，正式環境務必覆寫或移除）
+    SEED_USER_PASSWORD: z.string().min(8).default("dev12345"),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
