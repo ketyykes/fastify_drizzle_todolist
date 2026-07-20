@@ -57,8 +57,16 @@ Depends on: §1
 ## 3. 驗證（人工，非 TDD）
 Depends on: §2
 
-- [ ] 3.1 本機執行 `pnpm db:seed` 兩次，確認第二次不報錯、不新增重複列
-- [ ] 3.2 `docker compose down -v && docker compose up` 驗證全新環境自動 seed
-      成功，並能用預設帳密透過 `/auth/login` 登入
-- [ ] 3.3 `pnpm test` 全套通過（含新測試），確認未影響既有測試（尤其測試庫
-      `resetDb()` 相關流程）
+- [x] 3.1 本機執行 `pnpm db:seed` 兩次，確認第二次不報錯、不新增重複列
+      —— 兩次皆印出「略過已存在：dev@example.com」；資料庫直接查證 `users` 表
+      僅 1 筆，`password` 長度 60、`$2b$` 開頭（真的 bcrypt 雜湊，非明文）
+- [x] 3.2 `docker compose down -v && docker compose up` 驗證全新環境自動 seed
+      成功，並能用預設帳密透過 `/auth/login` 登入 —— 清空 volume 後重啟，server
+      log 印出「[seed-dev-user] 建立成功：dev@example.com」；`curl POST
+      /auth/login`（`dev@example.com` / `dev12345`）回應 200 並取得 token。
+      副作用：volume 清空連帶清掉測試庫 `fastify_drizzle_todolist_test`，已重新
+      `CREATE DATABASE` + `pnpm db:push:test` 復原，供 3.3 使用
+- [x] 3.3 `pnpm test` 全套通過（含新測試），確認未影響既有測試（尤其測試庫
+      `resetDb()` 相關流程）—— 重建測試庫後執行：web 2 test files / 7 tests
+      全過；server 13 test files / 96 tests 全過（較 baseline 91 筆增加 5 筆
+      新測試，數字自洽）
