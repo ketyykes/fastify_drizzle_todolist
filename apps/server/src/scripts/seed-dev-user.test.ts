@@ -17,12 +17,10 @@ describe("seedDevUser", () => {
 
     await seedDevUser({ email, password });
 
-    const rows = await db.execute(
-      sql`select password from users where email = ${email}`,
-    );
-    expect(rows.rows.length).toBe(1);
+    const result = await db.execute(sql`select password from users where email = ${email}`);
+    expect(result.rows.length).toBe(1);
 
-    const stored = rows.rows[0]?.password as string;
+    const stored = result.rows[0]?.password as string;
     expect(stored).not.toBe(password);
     expect(await bcrypt.compare(password, stored)).toBe(true);
   });
