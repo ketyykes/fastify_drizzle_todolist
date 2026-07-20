@@ -5,6 +5,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { authRoutes } from "./routes/auth";
 import { mockExternalRoutes } from "./routes/mock-external";
+import { mockSourceRoutes } from "./routes/mock-source";
 import { outboxAdminRoutes } from "./routes/outbox-admin";
 import { todoRoutes } from "./routes/todos";
 
@@ -55,6 +56,7 @@ export function buildApp() {
   app.register(authRoutes);
   app.register(todoRoutes);
   app.register(mockExternalRoutes);
+  app.register(mockSourceRoutes);
   app.register(outboxAdminRoutes);
 
   return app;
