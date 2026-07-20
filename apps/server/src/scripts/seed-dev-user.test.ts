@@ -39,4 +39,16 @@ describe("seedDevUser", () => {
     // 不更新密碼：仍是原本插入的雜湊值，不是依新明文密碼重新雜湊出來的值
     expect(result.rows[0]?.password).toBe(existingPasswordHash);
   });
+
+  it("seed_uses_provided_overrides", async () => {
+    // 用明顯不同於預設值（dev@example.com）的自訂 email，確認覆寫值確實被採用
+    const email = "custom@example.com";
+    const password = "custom1234";
+
+    await seedDevUser({ email, password });
+
+    const result = await db.execute(sql`select email from users where email = ${email}`);
+    expect(result.rows.length).toBe(1);
+    expect(result.rows[0]?.email).toBe(email);
+  });
 });
