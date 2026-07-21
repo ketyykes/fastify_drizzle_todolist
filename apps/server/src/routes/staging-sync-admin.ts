@@ -48,20 +48,26 @@ function toRunView(run: SyncRunRow) {
     resultCode: run.resultCode,
     lastErrorPhase: run.lastErrorPhase,
     errorMessage: run.errorMessage,
+    lastOffset: run.lastOffset,
     pageCount: run.pageCount,
     sourceCount: run.sourceCount,
     stagedCounts: run.stagedCounts,
+    // 峰值記憶體是本範例的主題觀測數據（「分批的是記憶體」的實證），一併輸出
+    peakMemoryBytes: run.peakMemoryBytes,
     fetchSeconds: run.fetchSeconds !== null ? Number(run.fetchSeconds) : null,
     swapSeconds: run.swapSeconds !== null ? Number(run.swapSeconds) : null,
     swapAttempts: run.swapAttempts,
     leaseVersion: run.leaseVersion,
     lockBackendPid: run.lockBackendPid,
+    heartbeatAt: run.heartbeatAt,
     startedAt: run.startedAt,
     stagedAt: run.stagedAt,
     finishedAt: run.finishedAt,
     abandonedBy: run.abandonedBy,
     abandonedReason: run.abandonedReason,
     abandonedAt: run.abandonedAt,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
   };
 }
 

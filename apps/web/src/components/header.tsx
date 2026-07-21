@@ -21,6 +21,12 @@ export default function Header() {
           <NavLink to="/outbox-guide" className={({ isActive }) => (isActive ? "font-bold" : "")}>
             Outbox 教學
           </NavLink>
+          <NavLink
+            to="/staging-sync-guide"
+            className={({ isActive }) => (isActive ? "font-bold" : "")}
+          >
+            Staging Sync 教學
+          </NavLink>
         </nav>
         <div className="flex items-center gap-2">
           <ModeToggle />

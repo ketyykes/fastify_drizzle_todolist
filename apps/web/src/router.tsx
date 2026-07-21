@@ -7,6 +7,7 @@ import { tokenAtom } from "./lib/auth";
 import Login from "./routes/login";
 import OutboxGuide from "./routes/outbox-guide";
 import Register from "./routes/register";
+import StagingSyncGuide from "./routes/staging-sync-guide";
 import Todos from "./routes/todos";
 
 // 受保護路由：無 token 導回登入頁
@@ -48,6 +49,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <OutboxGuide />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "staging-sync-guide",
+        element: (
+          <RequireAuth>
+            <StagingSyncGuide />
           </RequireAuth>
         ),
       },
