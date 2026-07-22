@@ -41,7 +41,7 @@ export interface SyncLock {
  * 一般透過 `db`（drizzle 的 pool 介面）下查詢，每次可能從連線池借用不同的底層
  * 連線，無法保證「上鎖」與「後續操作」發生在同一個 session。因此這裡改用
  * `pool.connect()` 額外借出一條專用連線，並把它整個交給呼叫端，直到明確呼叫
- * `release()` 才歸還——這段期間内絕不能讓這條連線被挪去做別的事。
+ * `release()` 才歸還——這段期間內絕不能讓這條連線被挪去做別的事。
  *
  * 用兩個 `hashtext()` 組成一組 64 bit advisory lock key：第一段是固定的
  * 命名空間字串 `'staging_sync'`，第二段用 `syncType` 字串，讓不同 sync_type
@@ -51,7 +51,17 @@ export interface SyncLock {
  * @throws {LockError} 取鎖過程中發生非預期錯誤（例如連線層錯誤）
  */
 export async function acquireSyncLock(syncType: string): Promise<SyncLock> {
-  const client: StagingSyncPoolClient = await pool.connect();
+  // pool.connect() 本身也可能失敗（連線池耗盡、資料庫不可達……）。這裡刻意把它
+  // 一併包進 try：契約上「取鎖過程中發生的任何錯誤」都應轉譯成 LockError，讓
+  // 呼叫端（dispatcher/route）統一映射成 503——若讓這裡的原始錯誤直接外洩，
+  // 上層會落入「其餘錯誤」分支被誤判成 502（SourceFetchError／swap 失敗等
+  // 才該有的狀態碼），混淆「取鎖失敗」與「同步流程本身失敗」兩種完全不同的情境。
+  let client: StagingSyncPoolClient;
+  try {
+    client = await pool.connect();
+  } catch (error) {
+    throw new LockError(syncType, error);
+  }
   let acquired = false;
 
   try {

@@ -233,7 +233,24 @@ export async function swap(
   } catch (error) {
     // merge 交易已經 rollback：目標表回到 swap 前的狀態，run 仍是 swapping
     // （資料庫視角），必須手動退回 staged 才能讓下一次 dispatch 重播。
-    await returnSwapToStaged(swappingFence, error);
+    try {
+      await returnSwapToStaged(swappingFence, error);
+    } catch (recordError) {
+      // 記錄失敗狀態這一步本身失敗，最常見原因是 fence 已經被別的流程搶走
+      // ——例如另一個持有 advisory lock 的 worker 呼叫 recoverActiveRun，
+      // 已經把這個殘留 run 判死退回 staged（owner_token/lease_version 都已
+      // 換新），這裡的 fenced update 自然 0 列命中而拋出 FenceLostError。
+      // 真正持有新 fence 的那一方已經正確收尾，不該讓這個次要錯誤蓋掉呼叫端
+      // 原本就該看到的原始錯誤，這裡只記一筆結構化 log 供事後追查，
+      // 最後仍必須讓原始 error 浮上去。
+      console.warn(
+        JSON.stringify({
+          event: "staging_sync_swap_recovery_record_failed",
+          runId: swappingFence.runId,
+          error: recordError instanceof Error ? recordError.constructor.name : String(recordError),
+        }),
+      );
+    }
     throw error;
   }
 

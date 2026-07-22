@@ -149,7 +149,24 @@ export async function runPhaseOne(
       currentSubPhase = "fetch";
     }
   } catch (error) {
-    await failPhaseOne(fence, currentSubPhase, error);
+    try {
+      await failPhaseOne(fence, currentSubPhase, error);
+    } catch (recordError) {
+      // 記錄失敗狀態本身失敗，根因與 merger.swap 相同：fence 已經被別的流程
+      // 搶走——例如另一個持有 advisory lock 的 worker 呼叫 recoverActiveRun，
+      // 已經把這個殘留 run 判死收尾（owner_token/lease_version 都已換新），
+      // 這裡的 fenced update 自然 0 列命中而拋出 FenceLostError。真正持有
+      // 新 fence 的那一方已經正確處理，不該讓這個次要錯誤蓋掉呼叫端原本就該
+      // 看到的原始錯誤，這裡只記一筆結構化 log 供事後追查，最後仍必須讓
+      // 原始 error 浮上去。
+      console.warn(
+        JSON.stringify({
+          event: "staging_sync_phase_one_failure_record_failed",
+          runId: fence.runId,
+          error: recordError instanceof Error ? recordError.constructor.name : String(recordError),
+        }),
+      );
+    }
     throw error;
   }
 

@@ -5,9 +5,9 @@
 import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 
-import { db, syncRuns } from "@fastify_drizzle_todolist/db";
+import { db, pool, syncRuns } from "@fastify_drizzle_todolist/db";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getStagingSyncConfig,
@@ -46,6 +46,10 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetDb();
   await app.inject({ method: "POST", url: "/mock-source/reset" });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function auth(token: string) {
@@ -177,6 +181,21 @@ describe("POST /staging-sync/trigger", () => {
     } finally {
       await externalLock.release();
     }
+  });
+
+  it("取鎖過程本身出錯（連線池故障）：503，且回應形狀為 { error }", async () => {
+    const token = await registerAndGetToken(app, "trigger-lock-error@example.com");
+    setStagingSyncConfigForTest(buildConfig({ sourceUrl: `${baseSourceUrl}?total=6` }));
+    vi.spyOn(pool, "connect").mockRejectedValueOnce(new Error("模擬連線池耗盡"));
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/staging-sync/trigger",
+      headers: auth(token),
+    });
+
+    expect(res.statusCode).toBe(503);
+    expect(typeof res.json().error).toBe("string");
   });
 
   it("來源故障：502，且 run 收尾 fetch_failed", async () => {
@@ -365,5 +384,27 @@ describe("GET /staging-sync/catalog", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ lists: expected });
+  });
+
+  it("三個查詢包在同一個 REPEATABLE READ 唯讀交易內執行（防撕裂快照回歸測試）", async () => {
+    const token = await registerAndGetToken(app, "catalog-transaction-options@example.com");
+    const originalTransaction = db.transaction.bind(db);
+    let capturedConfig: unknown;
+    const transactionSpy = vi
+      .spyOn(db, "transaction")
+      .mockImplementation((callback: Parameters<typeof db.transaction>[0], config?: unknown) => {
+        capturedConfig = config;
+        return originalTransaction(callback, config as never);
+      });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/staging-sync/catalog",
+      headers: auth(token),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(transactionSpy).toHaveBeenCalledTimes(1);
+    expect(capturedConfig).toEqual({ isolationLevel: "repeatable read", accessMode: "read only" });
   });
 });

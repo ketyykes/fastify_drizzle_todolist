@@ -57,6 +57,12 @@ describe("acquireSyncLock", () => {
     expect(fakeClient.release).toHaveBeenCalledTimes(1);
   });
 
+  it("pool.connect 本身失敗（連線池故障）時，也要轉譯成 LockError 而非讓原始錯誤外洩", async () => {
+    vi.spyOn(pool, "connect").mockRejectedValueOnce(new Error("模擬連線池耗盡"));
+
+    await expect(acquireSyncLock("mutex_test_connect_error")).rejects.toThrow(LockError);
+  });
+
   it("release 時 pg_advisory_unlock 回傳 false 會記錄 structured warning，但仍歸還連線", async () => {
     const fakeClient = {
       query: vi

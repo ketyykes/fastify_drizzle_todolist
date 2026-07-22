@@ -11,14 +11,31 @@ import {
   templateListsStaging,
 } from "@fastify_drizzle_todolist/db";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SYNC_RUN_PHASE, SYNC_TYPE_TEMPLATE_CATALOG } from "./constants";
 import { FenceLostError } from "./errors";
 import type { SyncRunFence } from "./fence";
 import { swap } from "./merger";
-import { claimForSwap, markStaged, recoverActiveRun, startFetching } from "./run-manager";
+import {
+  claimForSwap,
+  markStaged,
+  recoverActiveRun,
+  returnSwapToStaged,
+  startFetching,
+} from "./run-manager";
 import { resetDb } from "../test/helpers";
+
+// 只 mock returnSwapToStaged：預設仍呼叫真正的實作（vi.fn(actual.returnSwapToStaged)
+// 當底層行為），僅在「swap - 錯誤遮蔽保護」該則測試用 mockRejectedValueOnce 覆寫一次，
+// 其餘測試（含既有的 failureInjector it.each）完全不受影響、行為與 mock 前一致。
+vi.mock("./run-manager", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./run-manager")>();
+  return {
+    ...actual,
+    returnSwapToStaged: vi.fn(actual.returnSwapToStaged),
+  };
+});
 
 beforeEach(async () => {
   await resetDb();
@@ -356,6 +373,58 @@ describe("swap - failureInjector（模擬 merge 交易中途崩潰）", () => {
 
       // done 後 staging 已清空
       expect(await countStagingRows(stagedFence.runId)).toBe(0);
+    },
+  );
+});
+
+describe("swap - 錯誤遮蔽保護（fence 被搶走時不能蓋掉原始錯誤）", () => {
+  it(
+    "merge 交易失敗、且 returnSwapToStaged 本身也失敗（模擬 fence 已被別的流程搶走）：" +
+      "swap() reject 的仍是原始錯誤，不是 returnSwapToStaged 拋出的 FenceLostError，且有記錄二次失敗",
+    async () => {
+      const stagedFence = await createStagedFence();
+
+      // 模擬「returnSwapToStaged 本身也失敗」：最貼近真實情境的原因是這段期間
+      // fence 已被別的流程搶走（例如另一個持有 advisory lock 的 worker 呼叫
+      // recoverActiveRun，已經把這個 run 判死退回 staged 並換發新 lease，
+      // returnSwapToStaged 用手上的舊 fence 做 fenced update 自然 0 列命中）。
+      // 這裡直接 mock 它拋錯，聚焦驗證「不能讓這第二個錯誤蓋掉第一個原始錯誤」，
+      // 不必重現完整的搶佔時序。
+      vi.mocked(returnSwapToStaged).mockRejectedValueOnce(
+        new FenceLostError({
+          runId: stagedFence.runId,
+          expectedPhase: SYNC_RUN_PHASE.SWAPPING,
+          ownerToken: "stale-owner-token",
+          leaseVersion: 999,
+          operation: "returnSwapToStaged",
+        }),
+      );
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const error = await swap(stagedFence, {
+        failureInjector: () => {
+          throw new Error("ORIGINAL_MERGE_FAILURE");
+        },
+      }).catch((caught: unknown) => caught);
+
+      // 呼叫端看到的必須是原始的 merge 交易錯誤，不是 returnSwapToStaged 的 FenceLostError
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("ORIGINAL_MERGE_FAILURE");
+      expect(error).not.toBeInstanceOf(FenceLostError);
+
+      // 二次失敗必須被記錄下來，供事後追查
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const warnPayload = JSON.parse(warnSpy.mock.calls[0]?.[0] as string) as {
+        event: string;
+        runId: number;
+        error: string;
+      };
+      expect(warnPayload.event).toBe("staging_sync_swap_recovery_record_failed");
+      expect(warnPayload.runId).toBe(stagedFence.runId);
+      expect(warnPayload.error).toBe("FenceLostError");
+
+      warnSpy.mockRestore();
     },
   );
 });

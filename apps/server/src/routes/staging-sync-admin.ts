@@ -52,7 +52,7 @@ function toRunView(run: SyncRunRow) {
     pageCount: run.pageCount,
     sourceCount: run.sourceCount,
     stagedCounts: run.stagedCounts,
-    // 峰值記憶體是本範例的主題觀測數據（「分批的是記憶體」的實證），一併輸出
+    // 峰值記憶體是本範例的主題觀測資料（「分批的是記憶體」的實證），一併輸出
     peakMemoryBytes: run.peakMemoryBytes,
     fetchSeconds: run.fetchSeconds !== null ? Number(run.fetchSeconds) : null,
     swapSeconds: run.swapSeconds !== null ? Number(run.swapSeconds) : null,
@@ -151,23 +151,41 @@ export async function stagingSyncAdminRoutes(app: FastifyInstance) {
   });
 
   app.get("/staging-sync/catalog", async (_request, reply) => {
-    const lists = await db
-      .select()
-      .from(templateLists)
-      .where(eq(templateLists.isActive, true))
-      .orderBy(asc(templateLists.sourceListId));
+    // lists/items/tags 三個 SELECT 必須包在同一個 REPEATABLE READ 唯讀交易內
+    // 一起執行，否則會撕裂快照：merger.swap() 是單一交易的原子切換，若它恰好
+    // 在這三個查詢之間 commit，PostgreSQL READ COMMITTED（預設隔離級）下每個
+    // 語句各自取自己的快照，回應就會拼接新舊兩個世代的資料（已用真實 PG 重現）。
+    //
+    // 注意：只是包一層 `db.transaction(...)` 而不指定隔離級是不夠的——
+    // READ COMMITTED 隔離級下，同一個交易內的每一個語句仍然各自重新取得快照
+    // （commit 前執行的其他交易一旦 commit，交易內下一個語句就看得到），
+    // 撕裂的風險完全沒有被交易邊界本身排除。唯有 REPEATABLE READ（或更高）
+    // 才會讓整個交易從第一個查詢開始固定在單一快照，之後的語句都只看得到
+    // 那一刻的資料，才能真正保證 lists/items/tags 三者互相一致。
+    const { lists, items, tags } = await db.transaction(
+      async (tx) => {
+        const lists = await tx
+          .select()
+          .from(templateLists)
+          .where(eq(templateLists.isActive, true))
+          .orderBy(asc(templateLists.sourceListId));
 
-    const items = await db
-      .select()
-      .from(templateItems)
-      .where(eq(templateItems.isActive, true))
-      .orderBy(asc(templateItems.sourceListId), asc(templateItems.position));
+        const items = await tx
+          .select()
+          .from(templateItems)
+          .where(eq(templateItems.isActive, true))
+          .orderBy(asc(templateItems.sourceListId), asc(templateItems.position));
 
-    const tags = await db
-      .select()
-      .from(templateItemTags)
-      .where(eq(templateItemTags.isActive, true))
-      .orderBy(asc(templateItemTags.sourceItemId), asc(templateItemTags.tag));
+        const tags = await tx
+          .select()
+          .from(templateItemTags)
+          .where(eq(templateItemTags.isActive, true))
+          .orderBy(asc(templateItemTags.sourceItemId), asc(templateItemTags.tag));
+
+        return { lists, items, tags };
+      },
+      { isolationLevel: "repeatable read", accessMode: "read only" },
+    );
 
     // 依 sourceItemId 分組標籤：查詢已依 (sourceItemId, tag) 排序，依序塞入陣列
     // 即天生保持字母序，不需要另外再排一次。

@@ -94,6 +94,19 @@ describe("streamCatalogPages", () => {
     expect(pages[2]?.rows.map((r) => r.sourceListId)).toEqual([1006]);
   });
 
+  it("提前中止不多抓：for-await 拿到第一頁就 break，只會發出一次 HTTP 請求（驗證惰性）", async () => {
+    const config = buildConfig({ sourceUrl: `${baseSourceUrl}?total=7`, pageSize: 3 });
+    const fetchSpy = spyOnFetch();
+
+    for await (const page of streamCatalogPages(config)) {
+      expect(page.pageIndex).toBe(0);
+      break;
+    }
+
+    // 若實作不是惰性（例如內部預先抓好下一頁），這裡會超過 1 次。
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("count 剛好等於整頁時，多請求一次拿到空頁後結束，空頁本身不被 yield", async () => {
     const config = buildConfig({ sourceUrl: `${baseSourceUrl}?total=6`, pageSize: 3 });
     const fetchSpy = spyOnFetch();
