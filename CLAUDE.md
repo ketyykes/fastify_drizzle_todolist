@@ -60,9 +60,33 @@ todo 完成事件透過 transactional outbox 模式可靠推送到 mock 外部 w
   `dev@example.com` / `dev12345`（僅供本機測試，正式環境務必覆寫或移除）；
   docker-compose 的 `server` service 會在 `pnpm db:push` 之後自動執行
 
+## Staging Sync 教學範例
+
+大量、巢狀的外部資料以「staging 暫存表＋單一交易原子切換（mark-and-sweep）」模式做全量同步，
+搭配 `sync_runs` 狀態機、PostgreSQL advisory lock＋owner_token/lease_version fencing、partial
+unique index 最後防線。設計規格見 `docs/staging-sync/design.md`。全部模組已實作並通過測試
+（`pnpm --filter server test` 282/282、`pnpm --filter web test` 29/29）：
+
+- schema：`packages/db/src/schema/staging-sync.ts`（`sync_runs` 與 3 張 staging 表）、
+  `packages/db/src/schema/template-catalog.ts`（3 張目標表：`template_lists`／`template_items`／
+  `template_item_tags`）。
+- 核心模組：`apps/server/src/staging-sync/`（`constants`／`errors`／`config`／`fence`／`types`／
+  `manifest`／`mutex`／`run-manager`／`page-fetcher`／`page-transformer`／`staging-writer`／
+  `merger`／`orchestrator`／`dispatcher`／`pruner`）。
+- mock 來源 API：`apps/server/src/routes/mock-source.ts`（`/mock-source/template-catalog`
+  分頁＋故障模式切換）。
+- 維運端點：`apps/server/src/routes/staging-sync-admin.ts`（`POST /staging-sync/trigger`、
+  `GET /staging-sync/runs`、`POST /staging-sync/runs/:id/abandon`、`GET /staging-sync/catalog`）。
+- 維運 CLI：`apps/server/src/scripts/staging-sync-*.ts`（`staging-sync:run`／`:status`／
+  `:abandon`／`:prune`）。
+- 前端教學頁：`/staging-sync-guide`（架構圖、狀態機圖、關鍵設計說明卡片、即時演示區）。
+
+詳細設計依據、HTTP／CLI 契約、環境變數、測試策略見 `docs/staging-sync/design.md`。
+
 ## 測試資料庫隔離
 
-後端整合測試打真的 Postgres，且 `resetDb()` 會 TRUNCATE `todos`／`users`／`outbox_messages`。
+後端整合測試打真的 Postgres，且 `resetDb()` 會 TRUNCATE `todos`／`users`／`outbox_messages`／
+`sync_runs`／3 張 staging 表／3 張 template-catalog 目標表。
 為避免清空開發庫，測試一律連到**獨立測試庫**：`apps/server/src/test/setup.ts` 會把
 `DATABASE_URL` 的資料庫名自動換成 `<name>_test`（即 `fastify_drizzle_todolist_test`），
 可用 `TEST_DATABASE_URL` 覆寫。兩道防呆確保安全（**請勿移除**）：setup 檢查測試庫名須以

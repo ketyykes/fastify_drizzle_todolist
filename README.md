@@ -15,6 +15,7 @@
 - **Drizzle** - TypeScript-first ORM
 - **PostgreSQL** - 資料庫
 - **Transactional Outbox** - todo 完成事件透過 outbox sweeper worker 可靠送達 mock 外部 webhook（設計文件：`docs/outbox/design.md`，教學頁：`/outbox-guide`）
+- **Staging Sync** - 大量外部資料以「暫存表＋單一交易原子切換」做全量同步，封頂記憶體同時保住原子性（設計文件：`docs/staging-sync/design.md`；含維運端點、CLI、前端教學頁，詳見下方「Staging Sync 快速體驗」）
 
 ## 快速開始
 
@@ -74,25 +75,47 @@ pnpm dev:web             # 前端（Vite, :5173）
 以 `docker compose down` 停止（加上 `-v` 可一併清除資料庫 volume——
 每次變更 `POSTGRES_PASSWORD` 時都需要這麼做）。
 
+### Staging Sync 快速體驗
+
+一次全量刷新一份大量、巢狀的外部資料時，「全部載入記憶體」會 OOM、「天真分批 commit」會讓使用
+者看到「資料被刪掉一半」的假象——這裡示範「staging 暫存表＋單一交易原子切換」如何同時封頂記憶
+體又保住原子性。設計細節見 `docs/staging-sync/design.md`。
+
+體驗流程：
+
+1. `docker compose up -d` 啟動後端＋PostgreSQL（沿用同一組服務）。
+2. 用種子帳號登入取得 JWT：`POST /auth/login`（帳密見上方「設定環境變數」段落）。
+3. 觸發一次同步：`POST /staging-sync/trigger`（帶 `Authorization` header），或用 CLI
+   `pnpm --filter server staging-sync:run`。
+4. 觀察執行紀錄：`GET /staging-sync/runs`；查看目前生效的範本目錄：`GET /staging-sync/catalog`。
+5. 想示範不同故障情境，可先用 `PUT /mock-source/mode`（body `{ "mode": "fail_page_2" }` 等）
+   切換 mock 來源的行為模式，再觸發同步觀察 `fetch_failed`／重播行為。
+6. 前端教學頁：[http://localhost:5173/staging-sync-guide](http://localhost:5173/staging-sync-guide)
+   （架構圖、狀態機圖、關鍵設計說明、即時演示區，含觸發同步／切換 mock 模式／放棄 staged 執行）。
+
 ## 專案結構
 
 ```
 fastify_drizzle_todolist/
 ├── apps/
 │   ├── web/         # 前端應用（React + Vite SPA）
-│   │   └── src/routes/outbox-guide.tsx   # outbox 教學頁
+│   │   └── src/routes/   # outbox-guide.tsx、staging-sync-guide.tsx（教學頁）
 │   └── server/      # 後端 API（Fastify）
 │       └── src/
-│           ├── routes/    # auth.ts、todos.ts、mock-external.ts、outbox-admin.ts
+│           ├── routes/    # auth.ts、todos.ts、mock-external.ts、outbox-admin.ts、
+│           │               mock-source.ts、staging-sync-admin.ts
 │           ├── outbox/    # outbox 核心模組：repository、sweeper、sweep-loop、sender、backoff、config
-│           ├── scripts/   # outbox-requeue-dead.ts、outbox-prune.ts（維運用 CLI 腳本）
+│           ├── staging-sync/  # staging-sync 核心模組（詳見 docs/staging-sync/design.md）
+│           ├── scripts/   # outbox-requeue-dead.ts、outbox-prune.ts、
+│           │               staging-sync-run/status/abandon/prune.ts（維運用 CLI 腳本）
 │           └── worker.ts  # 獨立的 outbox sweeper worker 進入點
 ├── packages/
-│   ├── db/          # Drizzle schema（users、todos、outbox_messages）+ client
+│   ├── db/          # Drizzle schema（users、todos、outbox_messages、sync_runs、template-catalog……）+ client
 │   ├── env/         # 前後端共用的型別安全 env（t3-env）
 │   └── config/      # 共用的 TypeScript 設定
 ├── docs/
-│   └── outbox/design.md   # transactional outbox 設計文件
+│   ├── outbox/design.md         # transactional outbox 設計文件
+│   └── staging-sync/design.md   # staging-sync 設計文件
 ├── docker-compose.yml   # 後端 + worker（dev 容器）+ PostgreSQL
 └── .env.example         # env 範本（根目錄／apps/web／apps/server）
 ```

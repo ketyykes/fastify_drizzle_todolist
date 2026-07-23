@@ -20,6 +20,12 @@ export const env = createEnv({
     SEED_USER_EMAIL: z.email().default("dev@example.com"),
     // seed 用測試帳號的密碼（僅供本機開發測試，正式環境務必覆寫或移除）
     SEED_USER_PASSWORD: z.string().min(8).default("dev12345"),
+    // staging-sync 範例：mock 範本目錄來源端點（分頁拉取巢狀資料）
+    STAGING_SYNC_SOURCE_URL: z.url().default("http://localhost:7529/mock-source/template-catalog"),
+    // staging-sync 範例：每頁筆數（封頂記憶體的關鍵參數，見 page-fetcher.ts）
+    STAGING_SYNC_PAGE_SIZE: z.coerce.number().int().positive().default(50),
+    // staging-sync 範例：單次抓取單頁的 HTTP 逾時（毫秒）
+    STAGING_SYNC_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

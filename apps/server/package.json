@@ -12,7 +12,11 @@
     "worker": "tsx src/worker.ts",
     "seed": "tsx src/scripts/seed-dev-user.ts",
     "outbox:requeue-dead": "tsx src/scripts/outbox-requeue-dead.ts",
-    "outbox:prune": "tsx src/scripts/outbox-prune.ts"
+    "outbox:prune": "tsx src/scripts/outbox-prune.ts",
+    "staging-sync:run": "tsx src/scripts/staging-sync-run.ts",
+    "staging-sync:status": "tsx src/scripts/staging-sync-status.ts",
+    "staging-sync:abandon": "tsx src/scripts/staging-sync-abandon.ts",
+    "staging-sync:prune": "tsx src/scripts/staging-sync-prune.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

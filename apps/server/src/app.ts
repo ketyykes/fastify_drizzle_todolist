@@ -5,7 +5,9 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { authRoutes } from "./routes/auth";
 import { mockExternalRoutes } from "./routes/mock-external";
+import { mockSourceRoutes } from "./routes/mock-source";
 import { outboxAdminRoutes } from "./routes/outbox-admin";
+import { stagingSyncAdminRoutes } from "./routes/staging-sync-admin";
 import { todoRoutes } from "./routes/todos";
 
 // JWT 的 payload 與驗證後掛在 request.user 的型別
@@ -55,7 +57,9 @@ export function buildApp() {
   app.register(authRoutes);
   app.register(todoRoutes);
   app.register(mockExternalRoutes);
+  app.register(mockSourceRoutes);
   app.register(outboxAdminRoutes);
+  app.register(stagingSyncAdminRoutes);
 
   return app;
 }
