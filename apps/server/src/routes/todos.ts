@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { flushOutboxFastPath } from "../outbox/fast-path";
 import { enqueueOutbox } from "../outbox/repository";
+import { idParamSchema } from "../schemas";
 
 const createTodoSchema = z.object({
   title: z.string().min(1),
@@ -13,10 +14,6 @@ const createTodoSchema = z.object({
 const updateTodoSchema = z.object({
   title: z.string().min(1).optional(),
   completed: z.boolean().optional(),
-});
-
-const paramsSchema = z.object({
-  id: z.coerce.number().int().positive(),
 });
 
 export async function todoRoutes(app: FastifyInstance) {
@@ -42,7 +39,7 @@ export async function todoRoutes(app: FastifyInstance) {
   });
 
   app.patch("/todos/:id", async (request, reply) => {
-    const params = paramsSchema.safeParse(request.params);
+    const params = idParamSchema.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "Invalid id" });
     }
@@ -99,7 +96,7 @@ export async function todoRoutes(app: FastifyInstance) {
   });
 
   app.delete("/todos/:id", async (request, reply) => {
-    const params = paramsSchema.safeParse(request.params);
+    const params = idParamSchema.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "Invalid id" });
     }

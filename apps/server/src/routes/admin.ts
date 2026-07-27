@@ -4,10 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { requireRole } from "../rbac";
-
-const userIdParamSchema = z.object({
-  id: z.coerce.number().int().positive(),
-});
+import { idParamSchema } from "../schemas";
 
 const updateRoleSchema = z.object({
   // 直接沿用 schema 的角色清單，與 DB enum 保持單一真實來源
@@ -34,12 +31,11 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // 變更他人角色；因為 requireRole 每次都讀 DB，改完立即生效
   app.patch("/admin/users/:id/role", async (request, reply) => {
-    const params = userIdParamSchema.safeParse(request.params);
+    const params = idParamSchema.safeParse(request.params);
     const body = updateRoleSchema.safeParse(request.body);
     if (!params.success || !body.success) {
       return reply.code(400).send({ error: "Invalid input" });
     }
-
     const [updated] = await db
       .update(users)
       .set({ role: body.data.role })
