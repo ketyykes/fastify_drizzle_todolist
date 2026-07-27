@@ -10,6 +10,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { idParamSchema } from "../schemas";
 import { ActiveSyncRunError, LockConflictError, LockError } from "../staging-sync/errors";
 import { abandon } from "../staging-sync/run-manager";
 import { runTemplateCatalogSync } from "../staging-sync/dispatcher";
@@ -78,10 +79,6 @@ const runsQuerySchema = z.object({
   limit: z.coerce.number().int().positive().default(RUNS_LIMIT_DEFAULT),
 });
 
-const abandonParamsSchema = z.object({
-  id: z.coerce.number().int().positive(),
-});
-
 const abandonBodySchema = z.object({
   reason: z.string().trim().min(1),
 });
@@ -133,7 +130,7 @@ export async function stagingSyncAdminRoutes(app: FastifyInstance) {
   });
 
   app.post("/staging-sync/runs/:id/abandon", async (request, reply) => {
-    const params = abandonParamsSchema.safeParse(request.params);
+    const params = idParamSchema.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "Invalid id" });
     }

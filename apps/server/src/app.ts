@@ -3,6 +3,7 @@ import fastifyJwt from "@fastify/jwt";
 import { env } from "@fastify_drizzle_todolist/env/server";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 
+import { adminRoutes } from "./routes/admin";
 import { authRoutes } from "./routes/auth";
 import { mockExternalRoutes } from "./routes/mock-external";
 import { mockSourceRoutes } from "./routes/mock-source";
@@ -55,6 +56,7 @@ export function buildApp() {
   app.get("/", async () => "OK");
 
   app.register(authRoutes);
+  app.register(adminRoutes);
   app.register(todoRoutes);
   app.register(mockExternalRoutes);
   app.register(mockSourceRoutes);
