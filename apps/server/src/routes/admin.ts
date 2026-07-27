@@ -36,15 +36,49 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!params.success || !body.success) {
       return reply.code(400).send({ error: "Invalid input" });
     }
-    const [updated] = await db
-      .update(users)
-      .set({ role: body.data.role })
-      .where(eq(users.id, params.data.id))
-      .returning({ id: users.id, email: users.email, role: users.role });
+    const targetId = params.data.id;
+    const nextRole = body.data.role;
 
-    if (!updated) {
+    // 在單一交易內完成「檢查 → 更新」，避免把最後一位 admin 降級而導致
+    // 系統再無任何 admin 可管理（zero-admin lockout）。
+    const result = await db.transaction(async (tx) => {
+      // 先鎖定所有現任 admin 列（單一查詢、掃描順序一致 → 無死結風險）。
+      // 併發的降級請求會在此序列化，計數才不會出現撕裂。
+      const admins = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, "admin"))
+        .for("update");
+
+      const [target] = await tx
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, targetId))
+        .limit(1);
+      if (!target) {
+        return { kind: "not_found" as const };
+      }
+
+      // 只有「把現任 admin 降成非 admin」才有 lockout 風險
+      const isDemotingAdmin = target.role === "admin" && nextRole !== "admin";
+      if (isDemotingAdmin && admins.length <= 1) {
+        return { kind: "last_admin" as const };
+      }
+
+      const [updated] = await tx
+        .update(users)
+        .set({ role: nextRole })
+        .where(eq(users.id, targetId))
+        .returning({ id: users.id, email: users.email, role: users.role });
+      return { kind: "ok" as const, updated: updated! };
+    });
+
+    if (result.kind === "not_found") {
       return reply.code(404).send({ error: "User not found" });
     }
-    return reply.send(updated);
+    if (result.kind === "last_admin") {
+      return reply.code(409).send({ error: "Cannot demote the last admin" });
+    }
+    return reply.send(result.updated);
   });
 }

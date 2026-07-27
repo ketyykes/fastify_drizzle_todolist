@@ -135,4 +135,40 @@ describe("PATCH /admin/users/:id/role（角色變更即時生效）", () => {
     });
     expect(badId.statusCode).toBe(400);
   });
+
+  it("cannot_demote_the_last_admin_409", async () => {
+    const adminToken = await registerAdminAndGetToken("solo@example.com");
+    const soloId = await getUserId("solo@example.com");
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${soloId}/role`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { role: "user" },
+    });
+    expect(res.statusCode).toBe(409);
+
+    // 確認仍是 admin（降級被擋下，未生效）
+    const still = await app.inject({
+      method: "GET",
+      url: "/admin/users",
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(still.statusCode).toBe(200);
+  });
+
+  it("can_demote_an_admin_when_another_admin_remains_200", async () => {
+    const adminToken = await registerAdminAndGetToken("keeper@example.com");
+    await registerAdminAndGetToken("second@example.com"); // 第二位 admin
+    const secondId = await getUserId("second@example.com");
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${secondId}/role`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { role: "user" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().role).toBe("user");
+  });
 });

@@ -15,9 +15,14 @@ import type { preHandlerHookHandler } from "fastify";
  */
 export function requireRole(...allowedRoles: UserRole[]): preHandlerHookHandler {
   return async function requireRolePreHandler(request, reply) {
-    // authenticate 已於前一個 preHandler 驗證並填入 request.user；
-    // 這裡沿用相同慣例直接取用（本 preHandler 必須排在 authenticate 之後）。
-    const { userId } = request.user;
+    // 防禦性：本 preHandler 必須排在 app.authenticate 之後（由它驗證 JWT 並填入
+    // request.user）。若被誤掛而少了 authenticate，request.user 會是 undefined —
+    // 這裡回 401，而不是讓下面的解構丟出 TypeError（500）。
+    const jwtUser = request.user as { userId: number } | undefined;
+    if (!jwtUser) {
+      return reply.code(401).send({ error: "Unauthorized" });
+    }
+    const { userId } = jwtUser;
 
     const [row] = await db
       .select({ role: users.role })
